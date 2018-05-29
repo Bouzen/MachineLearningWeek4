@@ -1,0 +1,53 @@
+---
+title: "Machine Learning Project"
+output: html_document
+---
+install.packages('Hmisc')
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(caret)
+library(dplyr)
+library(randomForest)
+```
+
+## Reading the data
+```{r datareading}
+nastrings<-c("NA","","#DIV/0!")
+datagiven<- read.csv('C:/Users/Nate/Documents/Data Science Course/Machine Learning/Week 4/pml-training.csv',na.strings=nastrings)
+```
+##Creating our model
+```{r model}
+set.seed(210)
+##splitting into test and training
+trainflag<- createDataPartition(y = datagiven$classe, list = FALSE, p=0.7)
+
+trainingdata<-datagiven[trainflag,]
+testdata<-datagiven[-trainflag,]
+
+##Finding good columns to try
+#colnames(trainingdata)
+#Removing weird columns
+decolumnedtrain<-trainingdata[,-(1:5)]
+#NAColumns
+naprops <- colSums(is.na(decolumnedtrain))/nrow(decolumnedtrain)
+mostlyNAs <- names(naprops[naprops > 0.75]) 
+mostlyNACols <- which(naprops > 0.75)
+decolumnedtrain<-decolumnedtrain[,-mostlyNACols]
+#updating data types that caused issue in final test
+#problem_id (55) and magnet_dumbbell_z (41)not working
+
+
+set.seed(250)
+fittrain<-randomForest(classe~.,data=decolumnedtrain, na.action=na.pass, type='class')
+```
+
+##Testing Model
+```{r}
+traingoodness<- predict(fittrain,newdata=trainingdata)
+##Training data error
+confusionMatrix(traingoodness,trainingdata$classe)
+
+##get out of sample error
+testgoodness <- predict(fittrain, newdata = testdata[,-160], type="class")
+confusionMatrix(testgoodness,testdata$classe) #pretty high accuracy
+```
